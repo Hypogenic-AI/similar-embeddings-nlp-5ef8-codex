@@ -1,0 +1,69 @@
+%%%%% GENERAL FORMATTING MACROS %%%%%
+% General formatting and styling macros for academic papers
+% Import with: \input{commands/general}
+
+\usepackage{xcolor}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage{listings}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PARAGRAPH AND TEXT FORMATTING
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Bold paragraph headers (use: \para{Header.} followed by text)
+\newcommand{\para}[1]{\noindent \textbf{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% RESULT HIGHLIGHTING
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Colors for result arrows
+\definecolor{pastelgreen}{RGB}{50,205,50}
+
+% Arrows for showing improvement/decline in results
+\newcommand{\increase}{\textcolor{pastelgreen}{\bm{$\uparrow$}}}
+\newcommand{\decrease}{\textcolor{red}{\bm{$\downarrow$}}}
+
+% Phantom star for alignment in tables (use where no significance marker needed)
+\newcommand{\pstar}{\phantom{*}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CODE LISTINGS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\definecolor{codepurple}{RGB}{128,0,128}
+
+\lstdefinestyle{datalogstyle}{
+    basicstyle={\tt \scriptsize},
+    xleftmargin={6pt},
+    xrightmargin={6pt},
+    columns=flexible,
+    breakindent=0pt,
+    breaklines=true,
+    frame=tb,
+    stepnumber=1,
+    firstnumber=1,
+    numberfirstline=true,
+    tabsize=2,
+    extendedchars=true,
+    columns=fullflexible,
+    keepspaces=true,
+    escapeinside={@}{@},
+    captionpos=b,
+    commentstyle=\color{black!65},
+    numberstyle=\tiny\color{black!65},
+    stringstyle=\color{codepurple},
+    breakatwhitespace=false,
+    mathescape=true,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    aboveskip={0.8\baselineskip},
+    belowskip={0.2\baselineskip},
+}
+\lstset{style=datalogstyle}
+
+% Rename listings to "Example"
+\renewcommand{\lstlistingname}{Example}

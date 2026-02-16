@@ -1,0 +1,13 @@
+\section{Methodology}
+\label{sec:methodology}
+\para{Problem formulation.} We test two hypotheses: (i) translation pairs are more similar than mismatches in static embeddings, and (ii) same-sense cross-lingual contexts are more similar than different-sense contexts in contextual embeddings. For each pair, we compute cosine similarity between token or span representations and compare distributions across conditions.
+
+\para{Datasets.} We use \mclwic cross-lingual word-in-context data for en--ar, en--fr, en--ru, and en--zh, each with 1000 test examples and gold T/F labels indicating whether the target words share a sense. We also use \muse bilingual dictionaries (8--11k pairs per language) for static translation similarity. A polysemy lexicon is derived from the \mclwic en--en training split by selecting lemmas with both T and F labels.
+
+\para{Preprocessing and span handling.} Each example provides target spans (possibly multiple ranges). We convert ranges to a single contiguous span by taking the minimum start and maximum end, then align wordpiece offsets to the span. For static similarities, we average \xlmr input embeddings across the wordpieces of each word. For contextual similarities, we average the last-layer hidden states across the target span.
+
+\para{Model and implementation.} We use \xlmr (\texttt{xlm-roberta-base}) with max sequence length 128 and batch size 64. Inference is deterministic with seed 42 on an NVIDIA RTX 3090 (24GB). We do not fine-tune.
+
+\para{Evaluation metrics.} We report cosine similarity distributions, Welch's t-test and Mann--Whitney U for T vs. F comparisons, and Cohen's $d$ effect sizes. For an interpretable baseline, we fit a cosine threshold on the \mclwic en--en development set and report accuracy on cross-lingual test sets.
+
+\para{Baselines and comparisons.} The static comparison (translation vs. mismatch) acts as a strong alignment baseline for \muse. The contextual comparison (T vs. F) tests whether sense agreement is reflected in \xlmr representations without additional alignment.

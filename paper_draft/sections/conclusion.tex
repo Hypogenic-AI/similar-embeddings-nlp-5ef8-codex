@@ -1,0 +1,5 @@
+\section{Conclusion}
+\label{sec:conclusion}
+We tested whether multilingual embeddings align shared meaning across languages and whether polysemy reduces cross-lingual similarity. Using \muse dictionaries and \mclwic sense-labeled pairs with \xlmr, we found strong static alignment for translation pairs but only a small contextual gap between same-sense and different-sense contexts. The main takeaway is that cosine similarity in multilingual encoders captures broad semantic alignment but weakly reflects sense distinctions.
+
+Future work should replace the static baseline with aligned fastText or \muse vectors to isolate model effects, evaluate additional benchmarks such as \xlwic, and test contrastive or sense-aware probes that may recover finer-grained sense differences.

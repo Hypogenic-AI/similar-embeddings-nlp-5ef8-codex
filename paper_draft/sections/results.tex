@@ -1,0 +1,41 @@
+\section{Results}
+\label{sec:results}
+\para{Static alignment baseline.} \tabref{tab:static_similarity} shows a clear separation between translation and mismatched pairs in \muse dictionaries. Translation pairs have much higher cosine similarity (0.5131 vs. 0.3747), corresponding to a large effect size (Cohen's $d\approx1.03$). \Figref{fig:static_box} visualizes the separation across languages and confirms robust lexical alignment in \xlmr input embeddings.
+
+\input{tables/static_similarity}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/static_similarity_box.png}
+    \caption{Static similarity distribution for \muse translation pairs versus mismatches using \xlmr input embeddings. Translation pairs are consistently more similar.}
+    \label{fig:static_box}
+\end{figure}
+
+\para{Contextual similarity and sense agreement.} \tabref{tab:contextual_similarity} reports cross-lingual \mclwic similarities. Same-sense (T) pairs are only slightly more similar than different-sense (F) pairs (0.9847 vs. 0.9822). Welch's t-test (t=14.57, p=$7.56\times10^{-47}$) and Mann--Whitney U (U=2,541,088.5, p=$1.15\times10^{-49}$) are significant, but the effect size is modest ($d\approx0.46$). \Figref{fig:contextual_hist} and \Figref{fig:contextual_box} highlight the strong overlap between distributions.
+
+\input{tables/contextual_similarity}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/contextual_similarity_hist.png}
+    \caption{Histogram of contextual cosine similarities on cross-lingual \mclwic test sets. The T and F distributions largely overlap.}
+    \label{fig:contextual_hist}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/contextual_similarity_box.png}
+    \caption{Box plot of contextual similarities for same-sense (T) and different-sense (F) pairs. The median difference is small despite statistical significance.}
+    \label{fig:contextual_box}
+\end{figure}
+
+\para{Polysemy analysis.} Using the training-derived polysemy lexicon, we observe minimal separation in static similarity and a small increase for polysemous words in contextual similarity (\Figref{fig:polysemy}). This suggests that polysemy does not reduce similarity in this setting and may even slightly increase similarity due to context averaging effects.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/contextual_similarity_polysemy.png}
+    \caption{Contextual similarity by polysemy group, based on whether lemmas exhibit both T and F labels in training. Differences are small.}
+    \label{fig:polysemy}
+\end{figure}
+
+\para{Thresholded WiC accuracy.} A cosine threshold tuned on the \mclwic en--en development set achieves 0.53 accuracy on cross-lingual test sets, only slightly above chance. This confirms that raw cosine similarity alone is not sufficient for reliable sense discrimination.

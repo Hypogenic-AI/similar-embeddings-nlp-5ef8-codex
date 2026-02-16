@@ -1,0 +1,15 @@
+\begin{table}[t]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}lrrr@{}}
+        \toprule
+        \textbf{Pair Type} & \textbf{Count} & \textbf{Mean Cosine} & \textbf{Std} \\
+        \midrule
+        Translation (\muse) & 8000 & {\bf 0.5131} & 0.1646 \\
+        Mismatch & 8000 & 0.3747 & 0.0937 \\
+        \bottomrule
+    \end{tabular}
+    }
+    \caption{Static similarity with \xlmr input embeddings for \muse dictionaries. Translation pairs are substantially more similar than mismatches.}
+    \label{tab:static_similarity}
+\end{table}

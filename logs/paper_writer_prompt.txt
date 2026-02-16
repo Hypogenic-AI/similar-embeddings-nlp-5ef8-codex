@@ -1,0 +1,659 @@
+You are an academic paper writer. Generate a complete NEURIPS style paper
+based on the experiment results provided.
+
+════════════════════════════════════════════════════════════════════════════════
+                         IMPORTANT: BEFORE YOU START
+════════════════════════════════════════════════════════════════════════════════
+
+Before writing any content, you MUST complete these steps:
+
+1. READ THE SKILL: Review the paper-writer skill at templates/skills/paper-writer/SKILL.md
+2. READ THE STYLE GUIDE: Study templates/paper_writing/lab_style_guide.md carefully
+3. REVIEW EXAMPLES: Browse paper_examples/ for formatting and language patterns:
+   - Look at sections/1.introduction.tex for language style
+   - Look at tables/*.tex for table formatting
+   - Look at commands/*.tex for macro usage
+4. USE COMMAND TEMPLATES: Copy templates/paper_writing/commands/ to paper_draft/commands/
+
+CRITICAL: Reference example papers for FORMATTING and LANGUAGE STYLE only.
+Do NOT copy content, phrasing, or narrative structure from the example papers.
+The examples are in a different research domain - focus only on presentation style.
+
+════════════════════════════════════════════════════════════════════════════════
+                            EXPERIMENT REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+## 1. Executive Summary
+We evaluated whether multilingual embeddings align meanings across languages and whether polysemy weakens that alignment using MCL-WiC cross-lingual data and MUSE dictionaries with XLM-R embeddings. Translation pairs showed much higher static similarity than mismatched pairs, and contextual similarity was slightly higher for same-sense (T) than different-sense (F) pairs across languages, though the effect was small. Practically, multilingual contextual embeddings appear to preserve shared senses, but polysemy only weakly modulates similarity in this setup.
+
+## 2. Goal
+We tested the hypothesis that words with similar meanings across languages have similar embeddings in multilingual models, and that polysemy reduces similarity when only one sense aligns. This matters for cross-lingual retrieval, bilingual lexicon induction, and semantic search. The expected impact is clearer guidance on when multilingual embeddings can be trusted for sense-level matching.
+
+## 3. Data Construction
+
+### Dataset Description
+- MCL-WiC (SemEval-2021 Task 2): cross-lingual word-in-context disambiguation data for en-ar, en-fr, en-ru, en-zh. Each example provides two sentences in different languages with target word spans and a gold label (T/F) for same sense.
+- MUSE Dictionaries: bilingual word pairs for en-fr, en-ru, en-zh, en-ar used for static similarity baselines.
+
+### Example Samples
+MCL-WiC (cross-lingual) example format:
+```text
+id: test.en-fr.0
+lemma: gently
+sentence1: ... treated more gently in the 2008 Chairman&#39;s working paper.
+sentence2: Pendant cette décennie, ... augmenté modérément ...
+ranges1: 116-122
+ranges2: 73-83
+label: T/F
+```
+
+### Data Quality
+From `results/data_quality.json`:
+- Cross-lingual test sets: 1000 examples each for en-ar, en-fr, en-ru, en-zh; 0 missing spans or sentences.
+- Training en-en set: 8000 examples (used for polysemy lexicon).
+- MUSE dictionary files sizes: en-fr 10872, en-ru 10887, en-zh 8728, en-ar 11571.
+
+### Preprocessing Steps
+1. Parsed MCL-WiC JSON files and joined gold labels.
+2. Converted `ranges1/ranges2` (multi-span possible) to a single span by taking min start / max end.
+3. For embeddings, tokenized sentences and pooled target-span tokens via offset mappings.
+4. For static embeddings, averaged XLM-R input embeddings for the wordpiece tokens.
+
+### Train/Val/Test Splits
+- Polysemy lexicon derived from MCL-WiC training `en-en` set.
+- Threshold selection on MCL-WiC dev `en-en` (multilingual) set.
+- Main evaluation on cross-lingual test sets (en-ar, en-fr, en-ru, en-zh).
+
+## 4. Experiment Description
+
+### Methodology
+#### High-Level Approach
+We compared static vs contextual similarities in a multilingual encoder (XLM-R). Static similarity used input embedding averages for MUSE translation pairs. Contextual similarity used target-span embeddings from MCL-WiC and compared T vs F labels.
+
+#### Why This Method?
+It directly aligns with the hypothesis: if embeddings capture shared meaning, translation pairs and same-sense pairs should be more similar than mismatched or different-sense pairs. XLM-R is a widely used multilingual model with strong cross-lingual alignment.
+
+### Implementation Details
+#### Tools and Libraries
+- torch 2.10.0+cu128
+- transformers 5.1.0
+- datasets 4.5.0
+- numpy 2.4.2, pandas 3.0.0, scipy 1.17.0, seaborn 0.13.2
+
+#### Algorithms/Models
+- Model: `xlm-roberta-base`
+- Contextual embeddings: last hidden state, mean pooled over target-span tokens
+- Static embeddings: mean of input embedding vectors for wordpiece tokens
+
+#### Hyperparameters
+| Parameter | Value | Selection Method |
+|---|---|---|
+| max_length | 128 | default (covers WiC sentence lengths) |
+| batch_size | 64 | GPU memory-based (24GB) |
+| similarity | cosine | standard metric |
+| threshold grid | [-1..1], step 0.025 | dev set search |
+
+#### Training Procedure or Analysis Pipeline
+1. Load datasets and gold labels.
+2. Build polysemy lexicon from training (lemmas with both T and F labels).
+3. Compute static similarities for translation and mismatched pairs.
+4. Compute contextual similarities for cross-lingual WiC pairs.
+5. Fit threshold on dev en-en and evaluate on cross-lingual test.
+6. Run statistical tests and generate plots.
+
+### Experimental Protocol
+#### Reproducibility Information
+- Runs: 1 (deterministic inference)
+- Seed: 42
+- Hardware: NVIDIA GeForce RTX 3090 (24GB)
+- Batch size: 64
+- Mixed precision: not used (inference-only)
+
+#### Evaluation Metrics
+- Cosine similarity: measures embedding alignment
+- WiC accuracy (thresholded similarity): interpretable baseline for sense matching
+- Statistical tests: Welch t-test and Mann–Whitney U on T vs F similarities
+
+### Raw Results
+#### Tables
+Static similarity (MUSE dictionaries, 4 languages, 2k pairs each):
+| Pair Type | Count | Mean | Std |
+|---|---:|---:|---:|
+| translation | 8000 | 0.5131 | 0.1646 |
+| mismatch | 8000 | 0.3747 | 0.0937 |
+
+Contextual similarity (MCL-WiC cross-lingual test):
+| Label | Count | Mean | Std |
+|---|---:|---:|---:|
+| T (same sense) | 2000 | 0.9847 | 0.0051 |
+| F (different sense) | 2000 | 0.9822 | 0.0059 |
+
+#### Visualizations
+- `figures/contextual_similarity_hist.png`
+- `figures/contextual_similarity_box.png`
+- `figures/contextual_similarity_polysemy.png`
+- `figures/static_similarity_box.png`
+
+#### Output Locations
+- Results JSON: `results/metrics.json`
+- Plots: `figures/`
+- Tables: `results/*.csv`
+
+## 5. Result Analysis
+
+### Key Findings
+1. Translation pairs are substantially more similar than mismatched pairs in static embeddings (mean 0.513 vs 0.375; Cohen’s d ≈ 1.03).
+2. Contextual similarity is higher for same-sense (T) than different-sense (F) pairs, but the effect is small (mean 0.9847 vs 0.9822; Cohen’s d ≈ 0.46; p &lt; 1e-46).
+3. Polysemy classification from MCL-WiC training shows minimal effect on static similarity (d ≈ -0.03), and a small effect on contextual similarity (polysemous slightly higher than monosemous).
+
+### Hypothesis Testing Results
+- H1 (translation pairs higher similarity): Supported.
+- H2 (same-sense contexts higher similarity): Supported with small effect size.
+- H3 (polysemy reduces similarity in static embeddings): Not supported in this setup.
+
+Statistical tests (contextual T vs F):
+- Welch t-test: t = 14.57, p = 7.56e-47
+- Mann–Whitney U: U = 2,541,088.5, p = 1.15e-49
+
+### Comparison to Baselines
+- Static baseline clearly separates translation vs mismatched pairs.
+- Thresholded WiC accuracy (dev-trained threshold) on cross-lingual test: 0.53 (slightly above chance).
+
+### Surprises and Insights
+- Contextual similarity values are extremely high for both T and F, suggesting that raw cosine similarity may be too coarse for sense discrimination without additional normalization.
+
+### Error Analysis
+- Many F examples still have high cosine similarity, indicating overlap in contextual representations even when senses differ.
+- This may be due to averaging over wordpiece spans and the overall sentence context dominating the target token representation.
+
+### Limitations
+- Static embeddings derived from XLM-R input embeddings, not standalone monolingual vectors (e.g., fastText).
+- Polysemy is approximated by presence of both T and F labels in MCL-WiC training, which is incomplete.
+- Span handling merges multiple ranges into a single contiguous span, which may blur multiword targets.
+- No fine-tuning or alignment-specific training was performed.
+
+## 6. Conclusions
+Multilingual embeddings in XLM-R show strong alignment for translation pairs and slightly higher similarity for cross-lingual same-sense pairs, indicating that shared meaning is reflected in embeddings. However, polysemy does not strongly reduce similarity in static embeddings and the contextual effect size is modest. This suggests that raw cosine similarity is informative but insufficient for robust sense discrimination without additional modeling.
+
+### Implications
+- Cross-lingual semantic retrieval can rely on multilingual embeddings for broad meaning alignment.
+- Sense-level distinction likely requires more than simple cosine similarity (e.g., probing, alignment, or contrastive objectives).
+
+### Confidence in Findings
+Moderate. The experiments are consistent across four language pairs, but the polysemy proxy and static baseline are limited. Stronger evidence would come from sense-annotated lexicons and multi-model comparisons.
+
+## 7. Next Steps
+### Immediate Follow-ups
+1. Replace static baseline with fastText or aligned MUSE vectors to separate model effects from token-embedding artifacts.
+2. Evaluate with XL-WiC to test consistency across a different benchmark.
+
+### Alternative Approaches
+- Use contrastive probing on contextual embeddings to improve sense separability.
+
+### Broader Extensions
+- Extend to more language families and scripts.
+
+### Open Questions
+- How do alignment-aware fine-tuned models (e.g., multilingual sentence encoders) change sense-level similarity?
+
+## References
+- MCL-WiC (SemEval-2021 Task 2)
+- XL-WiC
+- MUSE dictionaries
+- XLM-R (Conneau et al., 2019)
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            RESEARCH PLAN
+════════════════════════════════════════════════════════════════════════════════
+
+## Motivation &amp; Novelty Assessment
+
+### Why This Research Matters
+Multilingual models are widely used for cross-lingual retrieval, translation, and multilingual applications, yet it is unclear how well they preserve meaning similarity across languages when words are polysemous. Understanding whether embeddings align on shared senses (vs. averaging across senses) directly impacts bilingual lexicon induction, semantic search, and cross-lingual transfer quality.
+
+### Gap in Existing Work
+Prior work focuses on cross-lingual alignment and evaluates on translation or WiC-style tasks separately, but there is limited direct analysis of how polysemy affects cross-lingual embedding similarity within the same multilingual model under controlled conditions.
+
+### Our Novel Contribution
+We test whether cross-lingual embedding similarity persists for polysemous words when only one sense aligns across languages, contrasting static alignment baselines with multilingual contextual embeddings using sense-aware benchmarks.
+
+### Experiment Justification
+- Experiment 1: Static embedding alignment (MUSE/VecMap) on bilingual dictionaries to establish baseline cross-lingual similarity for monosemous vs. polysemous words.
+- Experiment 2: Contextual embedding similarity and WiC-style evaluation (XL-WiC, MCL-WiC) to test whether shared senses yield higher similarity in multilingual contextual models.
+- Experiment 3: Sense-conditional similarity analysis by grouping polysemous words by sense match vs. mismatch to quantify the effect of polysemy on alignment.
+
+## Research Question
+Do words with similar meanings in different languages have similar embeddings in multilingual models, and how does polysemy affect cross-lingual embedding similarity when only one sense aligns?
+
+## Background and Motivation
+Cross-lingual embedding similarity underpins bilingual lexicon induction and multilingual transfer. While multilingual pretraining improves alignment, polysemy may blur similarity if embeddings aggregate multiple senses. This research aims to quantify that effect using standard dictionaries and sense-aware benchmarks.
+
+## Hypothesis Decomposition
+- H1: For monosemous translation pairs, multilingual embeddings are more similar than for unrelated pairs.
+- H2: For polysemous words where one sense aligns across languages, contextual embeddings in matching contexts yield higher similarity than in mismatched contexts.
+- H3: Static alignment methods show reduced similarity for polysemous pairs compared to monosemous pairs.
+
+## Proposed Methodology
+
+### Approach
+Combine static alignment baselines (MUSE/VecMap) with multilingual contextual embeddings (XLM-R) and evaluate similarity under controlled sense conditions using XL-WiC/MCL-WiC.
+
+### Experimental Steps
+1. Load MUSE dictionaries and identify monosemous vs. polysemous candidates (by WordNet/Wiktionary metadata from XL-WiC/MCL-WiC).
+2. Compute static embedding similarities and translation retrieval accuracy for monosemous vs. polysemous subsets.
+3. Extract contextual embeddings from a multilingual transformer (e.g., XLM-R) for XL-WiC/MCL-WiC contexts; compute cosine similarity across languages for matched vs. mismatched senses.
+4. Compare similarity distributions and WiC accuracy between conditions; perform statistical tests and effect sizes.
+
+### Baselines
+- Static alignment: VecMap and/or MUSE bilingual alignment.
+- Contextual: Multilingual transformer embeddings without additional alignment.
+
+### Evaluation Metrics
+- Cosine similarity distributions between cross-lingual word pairs.
+- Translation retrieval accuracy (top-1/top-5) on MUSE dictionaries.
+- WiC accuracy/F1 on XL-WiC and MCL-WiC.
+
+### Statistical Analysis Plan
+- Two-sample t-test or Mann–Whitney U for similarity distributions.
+- McNemar’s test for paired WiC predictions across conditions.
+- Effect sizes (Cohen’s d) and 95% confidence intervals.
+- Significance threshold α = 0.05 with FDR correction for multiple comparisons.
+
+## Expected Outcomes
+Support for the hypothesis would be higher similarity for monosemous pairs and for polysemous pairs only in sense-matched contexts. Static embeddings are expected to show weaker discrimination between sense-match and sense-mismatch.
+
+## Timeline and Milestones
+- Phase 2 (Setup/EDA): 1–2 hours
+- Phase 3 (Implementation): 2–3 hours
+- Phase 4 (Experiments): 2–3 hours
+- Phase 5 (Analysis): 1–2 hours
+- Phase 6 (Documentation): 1 hour
+
+## Potential Challenges
+- Sense annotation coverage across languages may be limited.
+- GPU memory constraints for large batch embedding extraction.
+- Aligning wordpieces to target tokens in contextual models.
+
+## Success Criteria
+- Completed experiments with reproducible scripts.
+- Statistically significant differences between sense-matched and mismatched conditions (or well-justified null results).
+- Comprehensive REPORT.md with plots, tables, and error analysis.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          LITERATURE REVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+# Literature Review
+
+## Research Area Overview
+This project studies whether words with similar meanings across languages have similar embeddings, especially in multilingual models and in the presence of polysemy. The literature spans cross-lingual word embedding alignment (static embeddings) and multilingual contextual representation learning, plus sense-aware benchmarks (WiC variants) that explicitly test meaning consistency across languages.
+
+## Key Papers
+
+### Word Translation Without Parallel Data (Conneau et al., 2017)
+- Authors: Conneau et al.
+- Year: 2017
+- Source: arXiv:1710.04087
+- Key Contribution: Unsupervised and supervised alignment methods (MUSE) for mapping monolingual embeddings into a shared space.
+- Methodology: Adversarial training + Procrustes refinement; dictionary induction with CSLS.
+- Datasets Used: MUSE bilingual dictionaries; fastText monolingual embeddings.
+- Results: Strong bilingual lexicon induction without parallel data.
+- Code Available: Yes (MUSE).
+- Relevance to Our Research: Provides baseline for measuring cross-lingual similarity of word embeddings.
+
+### A robust self-learning method for fully unsupervised cross-lingual mappings of word embeddings (Artetxe et al., 2018)
+- Authors: Artetxe et al.
+- Year: 2018
+- Source: ACL 2018 (P18-1073)
+- Key Contribution: Self-learning framework for unsupervised cross-lingual mapping (VecMap).
+- Methodology: Iterative refinement with dictionary induction, normalization, and CSLS.
+- Datasets Used: Bilingual dictionaries and word translation benchmarks.
+- Results: Competitive unsupervised alignment across language pairs.
+- Code Available: Yes (VecMap).
+- Relevance to Our Research: Strong baseline for cross-lingual alignment of static embeddings.
+
+### Cross-lingual alignment of contextual word embeddings (Schuster et al., 2019)
+- Authors: Schuster et al.
+- Year: 2019
+- Source: arXiv:1902.09492
+- Key Contribution: Aligns contextual embeddings across languages; demonstrates zero-shot dependency parsing gains.
+- Methodology: Learn a linear mapping between contextual embedding spaces using parallel data.
+- Datasets Used: Parallel corpora and UD parsing benchmarks.
+- Results: Improved cross-lingual transfer with aligned contextual representations.
+- Code Available: Not primary; references standard toolchains.
+- Relevance to Our Research: Directly addresses cross-lingual similarity of contextual embeddings.
+
+### Context-Aware Cross-Lingual Mapping (Aldarmaki and Diab, 2019)
+- Authors: Aldarmaki and Diab
+- Year: 2019
+- Source: arXiv:1903.03243
+- Key Contribution: Context-aware mapping to address sense variation in cross-lingual embeddings.
+- Methodology: Learn mappings using contextualized representations; evaluate alignment quality.
+- Datasets Used: Cross-lingual lexical tasks and contextual datasets.
+- Results: Improved mapping when context is considered.
+- Code Available: Not central; paper focuses on approach.
+- Relevance to Our Research: Aligns with hypothesis about polysemy and embedding similarity.
+
+### Cross-lingual Language Model Pretraining (Lample and Conneau, 2019)
+- Authors: Lample and Conneau
+- Year: 2019
+- Source: arXiv:1901.07291
+- Key Contribution: XLM introduces MLM and TLM objectives for cross-lingual pretraining.
+- Methodology: Transformer pretraining with multilingual corpora; use of parallel data for TLM.
+- Datasets Used: Wikipedia, parallel corpora; evaluation on XNLI and MT.
+- Results: Strong cross-lingual transfer; improved multilingual representations.
+- Code Available: Yes (XLM).
+- Relevance to Our Research: Provides multilingual contextual embeddings for similarity tests.
+
+### Unsupervised Cross-lingual Representation Learning at Scale (Conneau et al., 2019)
+- Authors: Conneau et al.
+- Year: 2019
+- Source: arXiv:1911.02116
+- Key Contribution: XLM-R scales multilingual pretraining without parallel data.
+- Methodology: Large-scale masked LM on multilingual corpora.
+- Datasets Used: CommonCrawl corpora; evaluation on XNLI, MLQA, etc.
+- Results: State-of-the-art multilingual performance.
+- Code Available: Yes (via XLM repo / later Hugging Face models).
+- Relevance to Our Research: Key multilingual model family for embedding similarity analysis.
+
+### Towards Multi-Sense Cross-Lingual Alignment of Contextual Embeddings (Liu et al., 2022)
+- Authors: Liu et al.
+- Year: 2022
+- Source: COLING 2022
+- Key Contribution: Explicit multi-sense alignment for contextual embeddings across languages.
+- Methodology: Sense-aware alignment objectives; evaluation on sense disambiguation tasks.
+- Datasets Used: Sense-aware benchmarks (WiC-style datasets).
+- Results: Better alignment for polysemous words.
+- Code Available: Not central; paper details method.
+- Relevance to Our Research: Directly investigates polysemy and cross-lingual embedding similarity.
+
+### XL-WiC: A Multilingual Benchmark for Word-in-Context Disambiguation (Raganato et al., 2020)
+- Authors: Raganato et al.
+- Year: 2020
+- Source: arXiv:2010.06478
+- Key Contribution: Introduces XL-WiC benchmark spanning multiple languages.
+- Methodology: Word-in-context classification using multilingual datasets.
+- Datasets Used: XL-WiC dataset (WordNet and Wiktionary variants).
+- Results: Establishes baseline performance across languages.
+- Code Available: Yes (dataset and scorer).
+- Relevance to Our Research: Provides evaluation for cross-lingual sense consistency.
+
+### SemEval-2021 Task 2: MCL-WiC (Martelli et al., 2021)
+- Authors: Martelli et al.
+- Year: 2021
+- Source: SemEval 2021
+- Key Contribution: Defines multilingual and cross-lingual WiC task with shared benchmarks.
+- Methodology: Task setup and evaluation for multilingual/cross-lingual sense disambiguation.
+- Datasets Used: MCL-WiC dataset.
+- Results: Task baselines and shared-task outcomes.
+- Code Available: Dataset in task repo.
+- Relevance to Our Research: Primary dataset for cross-lingual sense alignment evaluation.
+
+## Common Methodologies
+- Linear mapping of embedding spaces using Procrustes alignment and CSLS retrieval.
+- Self-learning / iterative dictionary induction for unsupervised alignment.
+- Contextual embedding alignment using parallel data or shared multilingual pretraining.
+- Sense-aware evaluation with WiC-style binary classification tasks.
+
+## Standard Baselines
+- Procrustes alignment with bilingual dictionaries (supervised MUSE / VecMap).
+- Unsupervised alignment with adversarial initialization + CSLS refinement.
+- Multilingual contextual models (XLM, XLM-R) without explicit alignment.
+
+## Evaluation Metrics
+- Bilingual lexicon induction accuracy (top-1/top-5 translation retrieval).
+- Cross-lingual word similarity (Spearman correlation on word pair similarity tasks).
+- WiC accuracy or F1 on sense disambiguation tasks.
+
+## Datasets in the Literature
+- MUSE bilingual dictionaries for word translation and mapping evaluation.
+- XL-WiC for multilingual word-in-context disambiguation.
+- MCL-WiC for multilingual and cross-lingual sense disambiguation.
+
+## Gaps and Opportunities
+- Limited analysis of how polysemy affects alignment quality across languages in multilingual models.
+- Few direct comparisons between static alignment methods and contextual multilingual models on identical sense-focused tasks.
+
+## Recommendations for Our Experiment
+- Recommended datasets: MUSE dictionaries for translation-based similarity; XL-WiC and MCL-WiC for sense-sensitive evaluation.
+- Recommended baselines: MUSE supervised and unsupervised alignment; VecMap unsupervised mapping; XLM/XLM-R contextual embeddings.
+- Recommended metrics: Translation retrieval accuracy; WiC accuracy; cross-lingual similarity correlations.
+- Methodological considerations: Control for polysemy by grouping by sense; compare static vs contextual embeddings under identical evaluation protocol.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          PAPER REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+Generate a complete academic paper with the following structure:
+
+1. TITLE
+   - Clear, specific, informative
+   - Should convey main finding or contribution
+
+2. ABSTRACT (150-250 words)
+   - Problem statement
+   - Approach
+   - Key results
+   - Significance
+
+3. INTRODUCTION
+   - Research problem and motivation
+   - Gap in existing work
+   - Our contribution (be specific)
+   - Paper organization
+
+4. RELATED WORK
+   - Organized by theme/approach
+   - Position our work relative to prior work
+   - Cite papers from literature review
+
+5. METHODOLOGY
+   - Clear description of approach
+   - Experimental setup
+   - Datasets used
+   - Evaluation metrics
+   - Baselines
+
+6. RESULTS
+   - Present results with tables and figures
+   - Statistical analysis
+   - Comparison to baselines
+   - Ablation studies (if applicable)
+
+7. DISCUSSION
+   - Interpretation of results
+   - Limitations
+   - Broader implications
+
+8. CONCLUSION
+   - Summary of contributions
+   - Key findings
+   - Future work
+
+9. REFERENCES
+   - BibTeX format
+   - All cited papers
+
+════════════════════════════════════════════════════════════════════════════════
+                          OUTPUT FORMAT
+════════════════════════════════════════════════════════════════════════════════
+
+Create a MODULAR LaTeX project with the following directory structure:
+
+paper_draft/
+├── main.tex              # Main file that imports all sections
+├── references.bib        # BibTeX references
+├── sections/
+│   ├── abstract.tex      # Abstract content
+│   ├── introduction.tex  # Introduction section
+│   ├── related_work.tex  # Related work section
+│   ├── methodology.tex   # Methodology section
+│   ├── results.tex       # Results section
+│   ├── discussion.tex    # Discussion section
+│   └── conclusion.tex    # Conclusion section
+├── figures/              # Directory for any generated figures
+├── tables/               # Directory for complex standalone tables
+└── appendix/             # Directory for appendix sections (if needed)
+
+INSTRUCTIONS:
+1. First, create the directory structure above (mkdir -p paper_draft/sections paper_draft/figures paper_draft/tables paper_draft/appendix)
+2. Write main.tex using the EXACT preamble for NEURIPS:
+
+   \documentclass{article}
+   \usepackage[final]{neurips_2025}  % NEURIPS style (neurips_2025.sty is in paper_draft/)
+   \usepackage[hidelinks]{hyperref}  % REQUIRED: clickable links
+   \usepackage{booktabs}  % REQUIRED: professional tables
+   \usepackage{graphicx}
+   \usepackage{amsmath,amssymb}
+
+   % Import command files
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+   % Use this bibliography style:
+   \bibliographystyle{plainnat}
+
+   - Use \input{sections/...} to include each section
+   - Use \bibliography{references} for references
+3. Write each section file with COMPLETE content (no placeholders)
+4. Each section file should include its \section{} command
+5. Write references.bib with all citations in BibTeX format
+6. After writing all files, compile the paper:
+   cd paper_draft && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+This modular structure allows humans to easily:
+- Edit individual sections without navigating a large file
+- Track changes per section
+- Reuse sections across different paper versions
+
+════════════════════════════════════════════════════════════════════════════════
+                          QUALITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+- Academic tone throughout
+- All claims must be supported by data from the experiment report
+- Proper citations using \cite{} commands
+- Clear figures and tables with proper captions
+- NO placeholder text - every section must have real content
+- The paper MUST compile without errors
+- If compilation fails, debug and fix the LaTeX errors
+
+════════════════════════════════════════════════════════════════════════════════
+                          LAB WRITING STYLE
+════════════════════════════════════════════════════════════════════════════════
+
+Follow these lab-specific conventions to match our paper style:
+
+1. LANGUAGE STYLE:
+   - Use active voice: "We propose", "We examine", "We focus on"
+   - Be direct and confident: "Our main question is...", "We hypothesize that..."
+   - State things clearly and simply - prefer plain language over jargon
+   - Use bold questions as paragraph organizers: {\bf what is X?}
+   - Include specific quantitative claims: "8.97% over baseline"
+   - Avoid fancy wording: "utilize" → "use", "facilitate" → "help"
+
+2. INTRODUCTION STRUCTURE:
+   - Engaging hook (get to the point quickly)
+   - Problem importance
+   - Gap identification
+   - Your approach with method figure reference
+   - Quantitative preview of results
+   - Contribution bullets (3-4 items, action verbs)
+
+3. CONTRIBUTION LISTS:
+   \begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+       \item We propose...
+       \item We conduct...
+       \item We complement...
+   \end{itemize}
+
+4. MODULAR COMMANDS STRUCTURE:
+   Create paper_draft/commands/ directory with:
+   - math.tex: Math notation macros (copy from templates/paper_writing/commands/)
+   - general.tex: Formatting macros (copy from templates/paper_writing/commands/)
+   - macros.tex: Project-specific term definitions
+
+   In main.tex, include:
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+5. REFERENCE CONVENTIONS:
+   Use reference macros from math.tex:
+   - \figref{fig:name} for "figure 1" (lowercase, in-sentence)
+   - \Figref{fig:name} for "Figure 1" (capitalized, start of sentence)
+   - \secref{sec:name} for "section 2"
+
+6. TEXT FORMATTING:
+   - Use \para{Header text} for bold paragraph headers
+   - Define method/dataset names with \textsc and \xspace:
+     \newcommand{\methodname}{\textsc{MethodName}\xspace}
+
+7. TABLE FORMATTING:
+   - Use booktabs package (no vertical lines)
+   - Use \resizebox{\textwidth}{!}{...} for wide tables
+   - Use @{} to remove padding at table edges
+   - Use \cmidrule(lr){x-y} for sub-headers
+   - Use \textsc{} for dataset/method names in headers
+   - Bold best results with {\bf ...}
+
+8. FIGURE FORMATTING:
+   - Use 0.32\textwidth for 3-column subfigures
+   - Use 0.95\linewidth for full-width figures
+   - Use \input{figures/legend} for shared legends
+   - Write self-contained captions explaining key observations
+
+9. RESULTS PRESENTATION:
+   - Define \increase and \decrease for colored arrows (green up, red down)
+   - Bold best results in tables
+   - Report confidence intervals when available
+
+10. ALGORITHM STYLING:
+    - Use algpseudocode with [noend]
+    - Use \triangleright for comments
+
+11. HYPERLINKS (REQUIRED):
+    - Always use \usepackage[hidelinks]{hyperref} or with colored links
+    - All citations, section refs, figure refs, table refs must be clickable
+    - This is essential for reader navigation
+
+════════════════════════════════════════════════════════════════════════════════
+                          WORKFLOW: REVIEW AND REFLECT
+════════════════════════════════════════════════════════════════════════════════
+
+Before calling finish, you MUST complete these review steps:
+
+1. REVIEW RESOURCES (at the start):
+   - Read templates/skills/paper-writer/SKILL.md for detailed guidance
+   - Study templates/paper_writing/lab_style_guide.md for style conventions
+   - Browse paper_examples/ for formatting and language patterns
+
+2. SELF-REFLECTION (before finishing):
+   After writing all sections, review your work against these criteria:
+
+   LANGUAGE CHECK:
+   - [ ] Is the writing clear and jargon-free?
+   - [ ] Are claims specific with quantitative support?
+   - [ ] Is active voice used throughout?
+
+   FORMATTING CHECK:
+   - [ ] Does main.tex include \input{commands/math}, \input{commands/general}, \input{commands/macros}?
+   - [ ] Is hyperref package included for clickable references?
+   - [ ] Do tables use booktabs (no vertical lines)?
+   - [ ] Are best results bolded in tables?
+   - [ ] Are figures/tables properly captioned?
+
+   STRUCTURE CHECK:
+   - [ ] Does introduction follow: hook → importance → gap → approach → preview → contributions?
+   - [ ] Are contribution bullets specific with action verbs?
+   - [ ] Does the paper compile without errors?
+
+3. FIX ISSUES:
+   - Address any issues found in the self-reflection
+   - Re-compile and verify the PDF looks correct
+
+Only after completing this review should you consider the paper finished.

@@ -1,0 +1,15 @@
+\begin{table}[t]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}lrrr@{}}
+        \toprule
+        \textbf{Label} & \textbf{Count} & \textbf{Mean Cosine} & \textbf{Std} \\
+        \midrule
+        Same sense (T) & 2000 & {\bf 0.9847} & 0.0051 \\
+        Different sense (F) & 2000 & 0.9822 & 0.0059 \\
+        \bottomrule
+    \end{tabular}
+    }
+    \caption{Contextual similarity on cross-lingual \mclwic test sets using \xlmr span embeddings. Same-sense pairs are slightly more similar.}
+    \label{tab:contextual_similarity}
+\end{table}

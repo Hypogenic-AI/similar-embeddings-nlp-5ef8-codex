@@ -1,0 +1,9 @@
+\section{Related Work}
+\label{sec:related_work}
+\para{Static cross-lingual alignment.} Early work on bilingual lexicon induction aligns monolingual spaces with supervised or unsupervised mappings. \muse introduces adversarial initialization with Procrustes refinement and CSLS retrieval\cite{conneau2017muse}, while VecMap proposes a robust self-learning framework for unsupervised mapping\cite{artetxe2018vecmap}. These methods show strong translation retrieval but do not directly measure sense-level effects. Our static analysis uses \muse dictionaries to establish a comparable alignment baseline within a multilingual encoder.
+
+\para{Contextual alignment across languages.} Several studies align contextual representations with parallel data or context-aware mappings\cite{schuster2019crosslingual,aldarmaki2019context}. These works show that contextual embeddings can be aligned, but they do not focus on polysemy-driven similarity gaps. We instead analyze similarity directly in a multilingual model without additional alignment to isolate sense effects.
+
+\para{Multilingual pretraining.} \xlm and \xlmr demonstrate that multilingual masked language modeling yields strong cross-lingual transfer\cite{lample2019xlm,conneau2019xlmr}. These models underpin many multilingual applications, making them a natural target for probing cross-lingual similarity and polysemy.
+
+\para{Sense-aware evaluation.} WiC-style benchmarks test whether context pairs share the same sense. \xlwic expands WiC to multiple languages\cite{raganato2020xlwic}, and \mclwic defines multilingual and cross-lingual variants for SemEval\cite{martelli2021mclwic}. Recent work on multi-sense alignment explicitly targets polysemy in contextual embeddings\cite{liu2022multisense}. Our study complements this line by providing a direct measurement of similarity shifts under sense agreement across languages.

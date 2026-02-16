@@ -1,0 +1,9 @@
+\section{Discussion}
+\label{sec:discussion}
+\para{Interpretation.} The static baseline shows that \xlmr input embeddings strongly align translation pairs, consistent with prior alignment results. In contrast, contextual similarities for \mclwic pairs are compressed near 1.0, which blurs the gap between same-sense and different-sense contexts. This suggests that span-averaged contextual representations are dominated by shared context and high-level semantics rather than fine-grained sense distinctions.
+
+\para{Why cosine similarity saturates.} The extremely high cosine values for both T and F pairs indicate that raw similarity in \xlmr's last-layer space may be too coarse. The span averaging step further reduces variance, especially when the target span includes multiple wordpieces or when the sentence context dominates the representation.
+
+\para{Limitations.} First, our static baseline uses \xlmr input embeddings rather than standalone monolingual vectors (\eg fastText), which may inflate alignment. Second, polysemy is approximated by training labels and may be incomplete. Third, we merge multi-span targets into a single span, which can blur multiword expressions. Fourth, we evaluate only one multilingual model without fine-tuning or alignment-specific training.
+
+\para{Implications.} For cross-lingual retrieval, cosine similarity in multilingual encoders is reliable for translation-level alignment but not sufficient for sense-level discrimination. Sense-aware objectives, contrastive probing, or alignment fine-tuning may be necessary when precise meaning matching is required.

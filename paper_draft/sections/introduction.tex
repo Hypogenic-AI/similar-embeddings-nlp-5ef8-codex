@@ -1,0 +1,20 @@
+\section{Introduction}
+\label{sec:introduction}
+Cross-lingual retrieval, bilingual lexicon induction, and multilingual search all rely on the assumption that multilingual embeddings place words with similar meanings close together. This assumption is often taken for granted because multilingual encoders perform well on downstream transfer tasks, yet it is less clear whether raw cosine similarity actually distinguishes shared senses when words are polysemous.
+
+\para{{\bf why does polysemy matter?}} Polysemy is the norm in natural language: many words express multiple senses that may or may not align across languages. If a single embedding averages over these senses, then cross-lingual similarity could remain high even when the intended meanings differ. This ambiguity matters for sense-level matching, dictionary induction, and semantic search where sense mismatches can degrade precision.
+
+\para{{\bf what is missing in existing work?}} Prior work shows strong cross-lingual alignment for static embeddings and multilingual contextual models\cite{conneau2017muse,artetxe2018vecmap,conneau2019xlmr}. However, the effect of polysemy on cross-lingual similarity has been less directly quantified under controlled sense-labeled conditions. We aim to fill this gap by comparing static translation similarity to contextual sense similarity within the same multilingual model.
+
+Our approach contrasts static similarities from \muse translation dictionaries with contextual similarities from \mclwic cross-lingual word-in-context pairs using \xlmr. We quantify how much same-sense (T) pairs differ from different-sense (F) pairs, and we report statistical tests and effect sizes (see \figref{fig:contextual_hist} and \tabref{tab:contextual_similarity}).
+
+Quantitatively, translation pairs are much more similar than mismatches (mean 0.513 vs. 0.375; Cohen's $d\approx1.03$), while same-sense contextual pairs are only slightly more similar than different-sense pairs (0.9847 vs. 0.9822; $d\approx0.46$). A simple cosine threshold yields 0.53 accuracy on cross-lingual \mclwic test sets, only marginally above chance. These results suggest strong alignment at the translation level but weak sense discrimination with raw cosine similarity.
+
+Our main contributions are:
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+    \item We conduct a controlled comparison of static and contextual cross-lingual similarity using \muse and \mclwic within a single multilingual encoder.
+    \item We quantify the impact of sense agreement on contextual similarity across four language pairs and report effect sizes and significance tests.
+    \item We provide an empirical assessment of how far cosine similarity can go for sense-level matching and identify where it fails.
+\end{itemize}
+
+\para{Paper organization.} \secref{sec:related_work} reviews prior work, \secref{sec:methodology} describes datasets and extraction, \secref{sec:results} presents results and analyses, and \secref{sec:discussion} discusses implications and limitations.

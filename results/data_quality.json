@@ -1,0 +1,56 @@
+{
+  "test.en-ar.data": {
+    "num_examples": 1000,
+    "num_gold": 1000,
+    "missing": {
+      "lemma": 0,
+      "sentence1": 0,
+      "sentence2": 0,
+      "ranges1": 0,
+      "ranges2": 0
+    }
+  },
+  "test.en-fr.data": {
+    "num_examples": 1000,
+    "num_gold": 1000,
+    "missing": {
+      "lemma": 0,
+      "sentence1": 0,
+      "sentence2": 0,
+      "ranges1": 0,
+      "ranges2": 0
+    }
+  },
+  "test.en-ru.data": {
+    "num_examples": 1000,
+    "num_gold": 1000,
+    "missing": {
+      "lemma": 0,
+      "sentence1": 0,
+      "sentence2": 0,
+      "ranges1": 0,
+      "ranges2": 0
+    }
+  },
+  "test.en-zh.data": {
+    "num_examples": 1000,
+    "num_gold": 1000,
+    "missing": {
+      "lemma": 0,
+      "sentence1": 0,
+      "sentence2": 0,
+      "ranges1": 0,
+      "ranges2": 0
+    }
+  },
+  "training.en-en.data": {
+    "num_examples": 8000,
+    "num_gold": 8000
+  },
+  "muse_dictionaries": {
+    "en-fr.0-5000.txt": 10872,
+    "en-ru.0-5000.txt": 10887,
+    "en-zh.0-5000.txt": 8728,
+    "en-ar.0-5000.txt": 11571
+  }
+}
